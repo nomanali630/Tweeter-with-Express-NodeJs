@@ -1,13 +1,18 @@
 
-  const url = 'https://azharregisterform.herokuapp.com';
-// const url = "http://localhost:3000";
+
+//   const url = 'https://azharregisterform.herokuapp.com';
+const url = "http://localhost:3000";
 var posts = document.getElementById("posts")
 var userPost = document.getElementById("userPost");
 let currentUser;
 
-if (currentUser === undefined || currentUser === null) {
+if (localStorage.getItem("currentUser")){
     currentUser = JSON.parse(localStorage.getItem("currentUser"));
 }
+var socket = io(url);
+socket.on("connect" , function(){
+    console.log("connected");
+})
 
 
 const signup = () => {
@@ -50,13 +55,13 @@ const signup = () => {
     return false;
 }
 
-const check = () => {
+const login = () => {
 
-    var email = document.getElementById("email").value.toLowerCase();
+    var userEmail = document.getElementById("email").value.toLowerCase();
     var password = document.getElementById("password").value
 
     obj = {
-        email: email,
+        userEmail: userEmail,
         password: password,
     }
     // console.log(obj);
@@ -90,79 +95,97 @@ const check = () => {
 
 }
 
-const signupSuccesfully = () => {
+const post = () => {
 
-    var welcomeUser = document.getElementById("welcomeUser");
-    var lgBtn = document.getElementById("lgBtn");
-    if (currentUser === null || currentUser === undefined)
-    {
-        welcomeUser.innerHTML = "Signup and tweet your thoughts away";
-        lgBtn.innerText = "Signup Now";
+    let tweetText = document.getElementById("userPost").value;
+    var postContent = document.createElement("li");
+
+    const Http = new XMLHttpRequest();
+    Http.open("GET", url + "/tweet");
+
+
+    Http.send(JSON.stringify({
+        userName: currentUser.userName,
+        tweetText:tweetText,
+
+    }));
+
+
+    Http.onreadystatechange = (e) => {
+        if (Http.readyState === 4) {
+            jsonRes = JSON.parse((Http.responseText));
+            console.log("posted success");
+    }
+}
+}
+
+const getTweets = () => {
+
+    if (localStorage.getItem("currentUser")) {
+        currentUser = JSON.parse(localStorage.getItem("currentUser"));
+        document.getElementById("welcomeUser").innerHTML = `Welcome, ${currentUser.userName}`
     }
 
-   
+    if (!currentUser) {
+        welcomeUser.innerHTML = "Signup and tweet your thoughts away";
+        document.getElementById("lgBtn").innerText = "Signup Now";
+    }
+
     const Http = new XMLHttpRequest();
-    Http.open("GET", url + "/successfullSignup");
+    Http.open("GET", url + "/tweets");
     Http.send();
     Http.onreadystatechange = (e) => {
         if (Http.readyState === 4) {
-            let data = JSON.parse((Http.responseText));
 
-            for (let i = 0; i < data.length; i++) {
-                // console.log(data[i].userName)
-                for (let j = 0; j < data[i].userPosts.length; j++) {
+            let tweets = JSON.parse((Http.responseText));
 
-                    var postContent = document.createElement("li");
-                    postContent.innerHTML = `<h4 class="userName">${data[i].userName}</h4> <p class="userPost">${data[i].userPosts[j]}</p>`;
-                    // console.log(`User: ${data[i]} ${data[i].userPosts[j]}`)
-                    posts.appendChild(postContent)
-                }
+            for (let i = 0; i < tweets.length; i++) {
+                // console.log(tweets[i].userName)
+
+                var eachTweet = document.createElement("li");
+                eachTweet.innerHTML =
+                    `<h4 class="userName">
+                    ${tweets[i].userName}
+                </h4> 
+                <p class="userPost">
+                    ${tweets[i].tweetText}
+                </p>`;
+                // console.log(`User: ${tweets[i]} ${tweets[i].userPosts[j]}`)
+                document.getElementById("posts").appendChild(eachTweet)
+
             }
-                welcomeUser.innerHTML = `Welcome, ${data[currentUser].userName}`
         }
     }
 }
 
+socket.on("NEW_POST", (newPost) => {
+
+    let jsonRes = JSON.parse(newPost);
+
+    var eachTweet = document.createElement("li");
+    eachTweet.innerHTML =
+        `<h4 class="userName">
+        ${jsonRes.userName}
+    </h4> 
+    <p class="userPost">
+        ${jsonRes.tweetText}
+    </p>`;
+    // console.log(`User: ${tweets[i]} ${tweets[i].userPosts[j]}`)
+    document.getElementById("posts").appendChild(eachTweet)
+})
 
 
 
 
-const post = () => {
-
-    userPost = document.getElementById("userPost").value;
-    var postContent = document.createElement("li");
-
-    const Http = new XMLHttpRequest();
-    Http.open("POST", url + "/userPost");
-    Http.setRequestHeader("Content-Type", "application/json");
-    Http.send(JSON.stringify({ userPost: userPost ,
-                                currentUser : currentUser,
-    }));
-
-    Http.onreadystatechange = (e) => {
-
-        jsonRes = JSON.parse((Http.responseText));
-        // console.log(jsonRes[currentUser].userPosts);
-        postContent.innerHTML = `<h4 class="userName">${jsonRes[currentUser].userName}</h4> <p class="userPost">${userPost}</p>`;
-
-    }
-    posts.appendChild(postContent);
-    document.getElementById("userPost").value = " ";
-}
-
-
-
-
-let  logout = ()=> {
-    if (currentUser === null || currentUser === undefined)
-    {
+let logout = () => {
+    if (currentUser === null || currentUser === undefined) {
         window.location.href = "index.html";
     }
-    else{
+    else {
         currentUser = null;
         localStorage.removeItem("currentUser");
         window.location.href = "login.html";
     }
-  
+
 }
 // DONE WITH IT
